@@ -3,30 +3,117 @@
 // Do not gamble with money you cannot afford to lose.
 
 open System
+open System.Diagnostics
+
 open BeloSoft.Data
 open BeloSoft.Betfair.API
 open BeloSoft.Betfair.API.Models
 
 [<EntryPoint>]
-let main argv = 
+let main argv =
     if argv.Length <> 2
     then
         failwith "Please enter your betfair user name and password!"        
 
+    // Timer helpers
+    let timer = Stopwatch()
+    
+    let startTimeMeasure (message : string) =
+        Console.Write(sprintf "\n%s" message)
+
+        if timer.ElapsedTicks <> 0L
+        then
+            timer.Reset()
+
+        timer.Start()
+
+    let stopTimeMeasure () =
+        timer.Stop()
+
+        Console.WriteLine(sprintf " %dms\n" timer.ElapsedMilliseconds)
+       
+    // Login       
     let username, password = argv.[0], argv.[1]
 
     let betfairServiceProvider = BetfairServiceProvider(BetfairApiServer.GBR)
 
     let accountOperations = betfairServiceProvider.AccountOperations
     let browsingOperations = betfairServiceProvider.BrowsingOperations
+
+    // Get market books (market selections prices)
+    let getMarketBooks(marketCatalogue : MarketCatalogue) = async {
+
+        startTimeMeasure "GetMarketBooks ..."
+
+        let! result = browsingOperations.GetMarketBooks([| marketCatalogue.marketId |], priceProjection = PriceProjection.DefaultActiveMarket())
+
+        stopTimeMeasure()
+
+        if result.IsSuccessResult
+        then
+            let marketBook = result.SuccessResult.[0]
+            let betEvent = marketCatalogue.event
+
+            Console.WriteLine(sprintf "%A: %s" betEvent.openDate betEvent.name)
+                    
+            Seq.iter2 (fun (runner : RunnerCatalog) (runnerData : Runner) ->
+                    Console.WriteLine(sprintf "%s: %.2f" runner.runnerName runnerData.lastPriceTraded)
+                )
+                marketCatalogue.runners marketBook.runners
+    }
+
+    // Place bet
+    let placeBet(marketId, selectionId, betType, size, price) = async {
+        
+        let instructions = [| 
+            PlaceOrderInstruction.LimitOrder(selectionId, betType, size, price)  
+        |]
+
+        startTimeMeasure "PlaceOrders ..."
+
+        let! result = betfairServiceProvider.BettingOperations.PlaceOrders(marketId, instructions)
+
+        stopTimeMeasure()
+
+        if result.IsSuccessResult
+        then
+            let placeExecutionReport = result.SuccessResult
+
+            Console.WriteLine(sprintf "Bet ID: %s" placeExecutionReport.instructionReports.[0].betId)
+    }
+
+    // Cancel bets
+    let cancelBets marketId = async {
+        startTimeMeasure "CancelOrders ..."
+
+        let! result = betfairServiceProvider.BettingOperations.CancelOrders(marketId)
+
+        stopTimeMeasure()
+
+        if result.IsSuccessResult
+        then
+            result.SuccessResult.instructionReports
+            |> Seq.iter (fun instructionReport -> 
+                    Console.WriteLine(sprintf "Cancelled Bet ID: %s" instructionReport.instruction.betId)
+                )
+    }
+
+    // Test
+    async {   
     
-    async {
-        let! loginResult = accountOperations.Login(username, password)
+        startTimeMeasure "Login ..."
+             
+        let! loginResult = accountOperations.Login(username, password)        
+
+        stopTimeMeasure()
 
         if loginResult.IsSuccessResult
         then
+            let today = DateTime.Today
+
             let filter = 
                 createMarketFilterParameters()
+                |> withMarketFilterParameter (MarketStartTime (TimeRange.FromRange(today.AddDays(1.0), today.AddDays(2.0))))
                 |> withMarketFilterParameter (MarketCountries [| "GB" |])
                 |> withMarketFilterParameter (EventTypeIds [| 1 |])
                 |> withMarketFilterParameter (MarketTypeCodes [| "MATCH_ODDS" |])
@@ -39,7 +126,11 @@ let main argv =
                     MarketProjection.RUNNER_DESCRIPTION
                     MarketProjection.MARKET_DESCRIPTION |]
             
-            let! marketCataloguesResult = browsingOperations.GetMarketCatalogues(filter, 10, marketProjection, MarketSort.MAXIMUM_TRADED)
+            startTimeMeasure "GetMarketCatalogues ..."
+
+            let! marketCataloguesResult = browsingOperations.GetMarketCatalogues(filter, 1, marketProjection, MarketSort.MAXIMUM_TRADED)
+
+            stopTimeMeasure()
 
             if marketCataloguesResult.IsSuccessResult
             then
@@ -52,8 +143,38 @@ let main argv =
                         Console.WriteLine(sprintf "%A: %s, eventId: %s, marketId: %s" betEvent.openDate betEvent.name betEvent.id marketCatalogue.marketId)
                     )
 
+                let marketCatalogue = marketCatalogues |> Seq.head
+
+                let mutable i = 0
+
+                while i < 100 do
+                    do! getMarketBooks marketCatalogue
+                    do! Async.Sleep 100
+                    i <- i + 1
+
+                i <- 0
+
+                // Bet operations
+                (*
+                let marketId = marketCatalogue.marketId
+                let selectionId = marketCatalogue.runners.[0].selectionId
+
+                while i < 5 do
+                    do! placeBet(marketId, selectionId, Side.BACK, 2.0, 1000.0)
+                    do! Async.Sleep 2000
+                    do! cancelBets marketId
+                    do! Async.Sleep 2000
+                    i <- i + 1
+                *)
+
+            startTimeMeasure "Logout ..."
+
             do! accountOperations.Logout() |> Async.Ignore
+
+            stopTimeMeasure()
     }
     |> Async.RunSynchronously
-
+    
+    Console.WriteLine("End of the test.")
+    Console.Read() |> ignore
     0 // return an integer exit code
