@@ -3,6 +3,7 @@
 // Do not gamble with money you cannot afford to lose.
 
 open System
+open System.Diagnostics
 
 open BeloSoft.Data
 open BeloSoft.Bfexplorer.Service
@@ -13,6 +14,23 @@ let showMarketData (market : Market) =
 
     market.Selections
     |> Seq.iter (fun selection -> Console.WriteLine(sprintf "\t%s: %.2f | %.2f" selection.Name selection.LastPriceTraded selection.TotalMatched))
+
+// Timer helpers
+let timer = Stopwatch()
+    
+let startTimeMeasure (message : string) =
+    Console.Write(sprintf "\n%s" message)
+
+    if timer.ElapsedTicks <> 0L
+    then
+        timer.Reset()
+
+    timer.Start()
+
+let stopTimeMeasure() =
+    timer.Stop()
+
+    Console.WriteLine(sprintf " %dms\n" timer.ElapsedMilliseconds)
 
 [<EntryPoint>]
 let main argv = 
@@ -25,19 +43,32 @@ let main argv =
     let bfexplorerService = BfexplorerService()
 
     async {
+
+        startTimeMeasure "Login ..."
+
         let! loginResult = bfexplorerService.Login(username, password)
+
+        stopTimeMeasure()
 
         if loginResult.IsSuccessResult
         then
+            let today = DateTime.Today
+
             let filter = [ 
-                    //Countries [| "GB" |]; 
-                    BetEventTypeIds [| 1 |]; MarketTypeCodes [| "MATCH_ODDS" |];
-                    //InPlayOnly false; 
-                    InPlayOnly true; 
-                    TurnInPlayEnabled true
+                    //StartTime (today.AddDays(1.0), today.AddDays(2.0))
+                    //Countries [| "GB" |]
+                    BetEventTypeIds [| 1 |]
+                    MarketTypeCodes [| "MATCH_ODDS" |]
+                    //InPlayOnly false
+                    InPlayOnly true
+                    //TurnInPlayEnabled true
                 ]
             
+            startTimeMeasure "GetMarketCatalogues ..."
+
             let! marketCataloguesResult = bfexplorerService.GetMarketCatalogues(filter, 10)
+
+            stopTimeMeasure()
 
             if marketCataloguesResult.IsSuccessResult
             then
@@ -56,7 +87,11 @@ let main argv =
 
                 let marketInfo = marketCatalogues.[0].MarketInfo
 
+                startTimeMeasure "GetMarket ..."
+
                 let! marketResult = bfexplorerService.GetMarket(marketInfo)
+
+                stopTimeMeasure()
 
                 if marketResult.IsSuccessResult
                 then                    
@@ -69,15 +104,23 @@ let main argv =
                     Console.CancelKeyPress.Add (fun _ -> continueLooping := false)
 
                     while !continueLooping do
-                        do! Async.Sleep(5000)
+                        do! Async.Sleep(50)
+
+                        startTimeMeasure "UpdateMarketBaseData ..."
 
                         let! result = bfexplorerService.UpdateMarketBaseData(market)
+
+                        stopTimeMeasure()
 
                         if result.IsSuccessResult && market.IsUpdated
                         then
                             showMarketData market
-                                                    
+              
+            startTimeMeasure "Logout ..."
+                                                  
             do! bfexplorerService.Logout() |> Async.Ignore
+
+            stopTimeMeasure()
     }
     |> Async.RunSynchronously
 

@@ -39,6 +39,8 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DocumentationFile>bin\Release\BetfairApiConsoleFSharp.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
+    <StartArguments>
+    </StartArguments>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BeloSoft.Betfair.API">

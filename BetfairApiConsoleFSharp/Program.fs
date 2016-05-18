@@ -9,28 +9,28 @@ open BeloSoft.Data
 open BeloSoft.Betfair.API
 open BeloSoft.Betfair.API.Models
 
+// Timer helpers
+let timer = Stopwatch()
+    
+let startTimeMeasure (message : string) =
+    Console.Write(sprintf "\n%s" message)
+
+    if timer.ElapsedTicks <> 0L
+    then
+        timer.Reset()
+
+    timer.Start()
+
+let stopTimeMeasure() =
+    timer.Stop()
+
+    Console.WriteLine(sprintf " %dms\n" timer.ElapsedMilliseconds)
+
 [<EntryPoint>]
 let main argv =
     if argv.Length <> 2
     then
         failwith "Please enter your betfair user name and password!"        
-
-    // Timer helpers
-    let timer = Stopwatch()
-    
-    let startTimeMeasure (message : string) =
-        Console.Write(sprintf "\n%s" message)
-
-        if timer.ElapsedTicks <> 0L
-        then
-            timer.Reset()
-
-        timer.Start()
-
-    let stopTimeMeasure () =
-        timer.Stop()
-
-        Console.WriteLine(sprintf " %dms\n" timer.ElapsedMilliseconds)
        
     // Login       
     let username, password = argv.[0], argv.[1]
@@ -147,25 +147,23 @@ let main argv =
 
                 let mutable i = 0
 
-                while i < 100 do
+                while i < 10 do
                     do! getMarketBooks marketCatalogue
-                    do! Async.Sleep 100
+                    do! Async.Sleep 250
                     i <- i + 1
 
                 i <- 0
 
                 // Bet operations
-                (*
                 let marketId = marketCatalogue.marketId
                 let selectionId = marketCatalogue.runners.[0].selectionId
 
                 while i < 5 do
                     do! placeBet(marketId, selectionId, Side.BACK, 2.0, 1000.0)
-                    do! Async.Sleep 2000
-                    do! cancelBets marketId
-                    do! Async.Sleep 2000
+                    //do! Async.Sleep 2000
                     i <- i + 1
-                *)
+
+                do! cancelBets marketId
 
             startTimeMeasure "Logout ..."
 
