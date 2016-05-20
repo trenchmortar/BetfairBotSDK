@@ -63,15 +63,17 @@ let main argv =
     }
 
     // Place bet
-    let placeBet(marketId, selectionId, betType, size, price) = async {
+    let placeBet(marketId, selectionId, side, size, price) = async {
         
-        let instructions = [| 
-            PlaceOrderInstruction.LimitOrder(selectionId, betType, size, price)  
-        |]
-
         startTimeMeasure "PlaceOrders ..."
 
+        (*
+        let instructions = [| PlaceOrderInstruction.LimitOrder(selectionId, side, size, price) |]
+
         let! result = betfairServiceProvider.BettingOperations.PlaceOrders(marketId, instructions)
+        *)
+
+        let! result = betfairServiceProvider.BettingOperations.PlaceOrder(marketId, selectionId, side, size, price)
 
         stopTimeMeasure()
 
@@ -149,7 +151,7 @@ let main argv =
 
                 while i < 10 do
                     do! getMarketBooks marketCatalogue
-                    do! Async.Sleep 250
+                    do! Async.Sleep 50
                     i <- i + 1
 
                 i <- 0
@@ -158,7 +160,7 @@ let main argv =
                 let marketId = marketCatalogue.marketId
                 let selectionId = marketCatalogue.runners.[0].selectionId
 
-                while i < 5 do
+                while i < 20 do
                     do! placeBet(marketId, selectionId, Side.BACK, 2.0, 1000.0)
                     //do! Async.Sleep 2000
                     i <- i + 1
