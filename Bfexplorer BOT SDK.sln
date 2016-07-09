@@ -21,6 +21,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JayBeeBot", "JayBeeBot\JayB
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "BetfairApiMarketBrowsing", "BetfairApiMarketBrowsing\BetfairApiMarketBrowsing.fsproj", "{A007B761-863A-423C-A44B-36B91A759224}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestScripts", "TestScripts\TestScripts.fsproj", "{0C8EB15A-6C1F-4BA2-BC48-94665451BB31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{A007B761-863A-423C-A44B-36B91A759224}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A007B761-863A-423C-A44B-36B91A759224}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A007B761-863A-423C-A44B-36B91A759224}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C8EB15A-6C1F-4BA2-BC48-94665451BB31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C8EB15A-6C1F-4BA2-BC48-94665451BB31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C8EB15A-6C1F-4BA2-BC48-94665451BB31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C8EB15A-6C1F-4BA2-BC48-94665451BB31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
